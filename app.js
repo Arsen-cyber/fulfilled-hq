@@ -176,18 +176,33 @@ V.comments = () => ({ title: 'Comments', sub: 'Your IG + TikTok comments, with d
   html: `<div style="max-width:760px">${commentsCard(false)}</div>` });
 
 // Creators — partnership targets the Creator Scout found (you DM them by hand).
-V.creators = () => ({ title: 'Creators', sub: 'Micro-creators to partner with — Scout finds them, you send the DM',
-  html: `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;max-width:1020px">
-    <div class="note" style="margin:0;flex:1">⚠️ <b>Send these yourself.</b> Auto-DMing breaks Instagram’s rules. Double-check each account before reaching out — follower counts are estimates. ${LIVE()}</div>
+let CREATOR_TIER = 'All';
+const CR_TIERS = ['All', '10–50k', '50–100k', '100–200k', '200k+'];
+const REPLY_COL = { High: 'var(--up)', Medium: 'var(--goldB)', Low: 'var(--faint)' };
+const REPLY_BG = { High: 'rgba(62,125,84,.12)', Medium: 'rgba(176,122,51,.14)', Low: 'rgba(26,18,10,.07)' };
+V.creators = () => {
+  const all = (D.creators || []).map((c, idx) => ({ ...c, _i: idx }));
+  const cnt = (t) => t === 'All' ? all.length : all.filter((c) => (c.tier || '') === t).length;
+  const list = CREATOR_TIER === 'All' ? all : all.filter((c) => (c.tier || '') === CREATOR_TIER);
+  return ({ title: 'Creators', sub: 'Partnership targets — Scout finds them, you send the DM',
+  html: `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px;max-width:1020px">
+    <div class="note" style="margin:0;flex:1">⚠️ <b>Send these yourself</b> (auto-DM breaks Instagram’s rules). Follower counts, reply odds & pay are <b>estimates</b> — verify before reaching out. ${LIVE()}</div>
     <button onclick="findCreators(this)" style="flex:none;border:0;border-radius:11px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:13.5px;padding:12px 18px;cursor:pointer;white-space:nowrap">🔎 Find creators now</button>
   </div>
-  ${D.creators && D.creators.length ? `<div class="two">${D.creators.map((c, i) => `<div class="contentcard">
-    <div class="ch"><div><div class="meta">Instagram · ${c.followers || '—'}</div><div class="ti">${c.handle}</div></div></div>
+  <div class="range" style="display:inline-flex;margin-bottom:18px;flex-wrap:wrap">${CR_TIERS.map((t) => `<button class="${t === CREATOR_TIER ? 'on' : ''}" onclick="setCreatorTier('${t}')">${t}${cnt(t) ? ` · ${cnt(t)}` : ''}</button>`).join('')}</div>
+  ${list.length ? `<div class="two">${list.map((c) => `<div class="contentcard">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="chip" style="background:rgba(176,122,51,.12);color:var(--goldB)">${c.tier || '—'}</span>
+      ${c.reply ? `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${REPLY_BG[c.reply] || 'rgba(26,18,10,.07)'};color:${REPLY_COL[c.reply] || 'var(--muted)'}">${c.reply} reply odds</span>` : ''}
+    </div>
+    <div class="ch"><div><div class="meta">Instagram · ${c.followers || '—'} followers (est.)</div><div class="ti">${c.handle}</div></div></div>
     <div style="font-size:12.5px;color:var(--muted);line-height:1.5">${c.why || ''}</div>
-    <div class="cap" id="dm-${i}">${c.dm_draft || ''}</div>
-    <div class="btns"><button class="ok" onclick="copyDM(${i})">Copy DM</button><button class="no" onclick="openIG('${c.handle}')">Open profile ↗</button></div>
+    ${c.pay ? `<div style="font-size:12.5px;color:var(--ink);background:var(--bone);border-radius:10px;padding:9px 12px">💰 <b>Suggested:</b> ${c.pay}</div>` : ''}
+    <div class="cap" id="dm-${c._i}">${c.dm_draft || ''}</div>
+    <div class="btns"><button class="ok" onclick="copyDM(${c._i})">Copy DM</button><button class="no" onclick="openIG('${c.handle}')">Open profile ↗</button></div>
     <div style="display:flex;gap:8px"><button onclick="creatorStatus('${c.handle}','contacted')" style="flex:1;border:0;border-radius:9px;background:rgba(62,125,84,.12);color:var(--up);font:inherit;font-weight:700;font-size:12px;padding:8px;cursor:pointer">✓ Contacted</button><button onclick="creatorStatus('${c.handle}','skip')" style="flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12px;padding:8px 14px;border-radius:9px;cursor:pointer">Skip</button></div>
-  </div>`).join('')}</div>` : `<div style="color:var(--muted);font-size:14px;max-width:600px">No creators yet — tap <b>“Find creators now.”</b> The Scout searches the web for real manifestation micro-creators and writes each a personal DM (takes about a minute, then refresh).</div>`}` });
+  </div>`).join('')}</div>` : `<div style="color:var(--muted);font-size:14px;max-width:600px">No creators in this category yet — tap <b>“Find creators now.”</b> The Scout searches the web for real manifestation creators and tags each with size, reply odds & suggested pay (~1 min, then refresh).</div>`}` }); };
+window.setCreatorTier = (t) => { CREATOR_TIER = t; render(); };
 
 window.findCreators = async (btn) => {
   if (btn) { btn.textContent = '🔎 Scouting…'; btn.disabled = true; }
@@ -292,7 +307,7 @@ async function loadLive() {
       if (rc.active_subs != null) D.money.activeSubs = rc.active_subs;
       if (rc.trials != null) D.money.trials = rc.trials;
     }
-    if (d.creators) D.creators = d.creators.map((c) => ({ handle: c.handle, followers: c.followers, why: c.why, dm_draft: c.dm_draft, status: c.status }));
+    if (d.creators) D.creators = d.creators.map((c) => ({ handle: c.handle, followers: c.followers, tier: c.tier, reply: c.reply_likelihood, pay: c.pay, why: c.why, dm_draft: c.dm_draft, status: c.status }));
     return true;
   } catch (e) { return true; /* offline → keep samples */ }
 }
