@@ -93,6 +93,11 @@ window.DATA = {
       caption: 'Become the person who already has it · A 90-second script, written for you · Doubt less. Become more.' },
   ],
 
+  creators: [
+    { handle: '@manifestwithmahe', followers: '~18k', why: 'Warm, personal approach to subconscious reprogramming — real voice, engaged niche.', dm_draft: 'Hey Mahe — your framing around subconscious reprogramming genuinely stands out. We’re building Fulfilled, an AI manifestation coach that writes your full daily practice and tracks belief as it grows — we’d love to offer you free Pro access + an affiliate partnership. Open to a quick chat?', status: 'new' },
+    { handle: '@dreamingclearly', followers: '~31k', why: 'Daily law-of-attraction reflections to camera, strong saves on routine posts.', dm_draft: 'Hi! Your daily reflections feel so genuine — exactly the energy we love. We made Fulfilled, an app that writes your whole manifestation practice for you. We’d love to gift you free Pro + set up an affiliate deal. Would you be up for trying it?', status: 'new' },
+  ],
+
   alerts: [
     { k: 'win', text: 'MRR crossed <b>$300</b> 🎉', t: '26 min ago' },
     { k: 'viral', text: 'TikTok “Day 1→30” is taking off — <b>86k views</b>', t: '1h ago' },

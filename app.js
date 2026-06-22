@@ -175,6 +175,41 @@ function commentsCard(short) { const list = short ? D.comments.slice(0, 3) : D.c
 V.comments = () => ({ title: 'Comments', sub: 'Your IG + TikTok comments, with draft replies',
   html: `<div style="max-width:760px">${commentsCard(false)}</div>` });
 
+// Creators — partnership targets the Creator Scout found (you DM them by hand).
+V.creators = () => ({ title: 'Creators', sub: 'Micro-creators to partner with — Scout finds them, you send the DM',
+  html: `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;max-width:1020px">
+    <div class="note" style="margin:0;flex:1">⚠️ <b>Send these yourself.</b> Auto-DMing breaks Instagram’s rules. Double-check each account before reaching out — follower counts are estimates. ${LIVE()}</div>
+    <button onclick="findCreators(this)" style="flex:none;border:0;border-radius:11px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:13.5px;padding:12px 18px;cursor:pointer;white-space:nowrap">🔎 Find creators now</button>
+  </div>
+  ${D.creators && D.creators.length ? `<div class="two">${D.creators.map((c, i) => `<div class="contentcard">
+    <div class="ch"><div><div class="meta">Instagram · ${c.followers || '—'}</div><div class="ti">${c.handle}</div></div></div>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.5">${c.why || ''}</div>
+    <div class="cap" id="dm-${i}">${c.dm_draft || ''}</div>
+    <div class="btns"><button class="ok" onclick="copyDM(${i})">Copy DM</button><button class="no" onclick="openIG('${c.handle}')">Open profile ↗</button></div>
+    <div style="display:flex;gap:8px"><button onclick="creatorStatus('${c.handle}','contacted')" style="flex:1;border:0;border-radius:9px;background:rgba(62,125,84,.12);color:var(--up);font:inherit;font-weight:700;font-size:12px;padding:8px;cursor:pointer">✓ Contacted</button><button onclick="creatorStatus('${c.handle}','skip')" style="flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12px;padding:8px 14px;border-radius:9px;cursor:pointer">Skip</button></div>
+  </div>`).join('')}</div>` : `<div style="color:var(--muted);font-size:14px;max-width:600px">No creators yet — tap <b>“Find creators now.”</b> The Scout searches the web for real manifestation micro-creators and writes each a personal DM (takes about a minute, then refresh).</div>`}` });
+
+window.findCreators = async (btn) => {
+  if (btn) { btn.textContent = '🔎 Scouting…'; btn.disabled = true; }
+  try {
+    await fetch(window.HQ_CONFIG.url + '/hq-creator-scout', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: '{}' });
+    alert('🔎 Scouting for creators…\n\nNew ones appear here in about a minute — refresh the page to see them.');
+  } catch (e) { alert('Could not start the scout — try again.'); }
+  if (btn) { btn.textContent = '🔎 Find creators now'; btn.disabled = false; }
+};
+window.copyDM = (i) => {
+  const t = (D.creators[i] || {}).dm_draft || '';
+  if (navigator.clipboard) navigator.clipboard.writeText(t);
+  const el = document.getElementById('dm-' + i);
+  if (el) { el.style.background = 'rgba(62,125,84,.16)'; setTimeout(() => { el.style.background = ''; }, 700); }
+};
+window.openIG = (h) => window.open('https://instagram.com/' + String(h).replace('@', ''), '_blank');
+window.creatorStatus = async (handle, status) => {
+  try { await fetch(window.HQ_CONFIG.url + '/hq-creator-scout', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'status', handle, status }) }); } catch (e) { /* best-effort */ }
+  D.creators = (D.creators || []).filter((x) => x.handle !== handle);
+  render();
+};
+
 // Content queue
 V.content = () => ({ title: 'Content queue', sub: 'What the agents built — nothing posts until you approve',
   html: `${D.briefing ? `<div style="margin-bottom:20px;max-width:980px">${briefingCard()}</div>` : ''}<div class="two">${D.content.map((c) => `<div class="contentcard">
@@ -203,7 +238,7 @@ V.settings = () => ({ title: 'Settings', sub: 'Connections, agents & spending ca
 const NAV = [
   { v: 'overview', ic: '◎', label: 'Overview' },
   { group: 'GROW' }, { v: 'money', ic: '$', label: 'Money' }, { v: 'funnel', ic: '⛢', label: 'Funnel' }, { v: 'ads', ic: '◈', label: 'Ads' },
-  { group: 'REACH' }, { v: 'social', ic: '❋', label: 'Social' }, { v: 'reviews', ic: '★', label: 'Reviews' }, { v: 'competitors', ic: '⚑', label: 'Competitors' }, { v: 'comments', ic: '❝', label: 'Comments' },
+  { group: 'REACH' }, { v: 'social', ic: '❋', label: 'Social' }, { v: 'reviews', ic: '★', label: 'Reviews' }, { v: 'competitors', ic: '⚑', label: 'Competitors' }, { v: 'comments', ic: '❝', label: 'Comments' }, { v: 'creators', ic: '✦', label: 'Creators' },
   { group: 'AGENTS' }, { v: 'content', ic: '▶', label: 'Content queue' }, { v: 'settings', ic: '⚙', label: 'Settings' },
 ];
 function renderNav(active) {
@@ -257,6 +292,7 @@ async function loadLive() {
       if (rc.active_subs != null) D.money.activeSubs = rc.active_subs;
       if (rc.trials != null) D.money.trials = rc.trials;
     }
+    if (d.creators) D.creators = d.creators.map((c) => ({ handle: c.handle, followers: c.followers, why: c.why, dm_draft: c.dm_draft, status: c.status }));
     return true;
   } catch (e) { return true; /* offline → keep samples */ }
 }
