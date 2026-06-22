@@ -203,6 +203,14 @@ V.creators = () => {
     <div style="display:flex;gap:8px"><button onclick="creatorStatus('${c.handle}','contacted')" style="flex:1;border:0;border-radius:9px;background:rgba(62,125,84,.12);color:var(--up);font:inherit;font-weight:700;font-size:12px;padding:8px;cursor:pointer">✓ Contacted</button><button onclick="creatorStatus('${c.handle}','skip')" style="flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12px;padding:8px 14px;border-radius:9px;cursor:pointer">Skip</button></div>
   </div>`).join('')}</div>` : `<div style="color:var(--muted);font-size:14px;max-width:600px">No creators in this category yet — tap <b>“Find creators now.”</b> The Scout searches the web for real manifestation creators and tags each with size, reply odds & suggested pay (~1 min, then refresh).</div>`}` }); };
 window.setCreatorTier = (t) => { CREATOR_TIER = t; render(); };
+window.runAgents = async (btn) => {
+  if (btn) { btn.textContent = '🔄 Working…'; btn.disabled = true; }
+  try {
+    await fetch(window.HQ_CONFIG.url + '/hq-agents', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: '{}' });
+    alert('🔄 Generating fresh content… new drafts land in a few seconds — refresh to see them.');
+  } catch (e) { alert('Could not run the agents — try again.'); }
+  if (btn) { btn.textContent = '🔄 Generate content now'; btn.disabled = false; }
+};
 
 window.findCreators = async (btn) => {
   if (btn) { btn.textContent = '🔎 Scouting…'; btn.disabled = true; }
@@ -227,7 +235,8 @@ window.creatorStatus = async (handle, status) => {
 
 // Content queue
 V.content = () => ({ title: 'Content queue', sub: 'What the agents built — nothing posts until you approve',
-  html: `${D.briefing ? `<div style="margin-bottom:20px;max-width:980px">${briefingCard()}</div>` : ''}<div class="two">${D.content.map((c) => `<div class="contentcard">
+  html: `<div style="margin-bottom:18px"><button onclick="runAgents(this)" style="border:0;border-radius:11px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:13.5px;padding:12px 18px;cursor:pointer">🔄 Generate content now</button> <span style="color:var(--faint);font-size:12.5px;margin-left:8px">On-demand only — ~0.3¢ per run, nothing runs on its own.</span></div>
+  ${D.briefing ? `<div style="margin-bottom:20px;max-width:980px">${briefingCard()}</div>` : ''}<div class="two">${D.content.map((c) => `<div class="contentcard">
     <div class="ch"><div class="thumb">${c.thumb ? `<img src="${c.thumb}" class="thumb">` : (c.type[0] === 'V' ? '▶' : c.type[0] === 'C' ? '❏' : '✍')}</div>
       <div><div class="meta">${c.type} · ${c.by} → ${c.for}</div><div class="ti">${c.title}</div></div></div>
     <span class="statuspill ${c.status}">${c.status === 'ready' ? 'Ready to post' : 'Needs your review'}</span>
