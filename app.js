@@ -130,14 +130,19 @@ function socialTiles() { const s = D.social;
   return t('ig', '◙', 'Instagram', fmt(s.instagram.followers), s.instagram.delta, `Reach <b>${s.instagram.reach}</b>`, `Top: <b>${s.instagram.posts[0].t}</b> · ${s.instagram.posts[0].v}`)
     + t('tk', '♪', 'TikTok', fmt(s.tiktok.followers), s.tiktok.delta, `Views <b>${s.tiktok.reach}</b>`, `Top: <b>${s.tiktok.posts[0].t}</b> · ${s.tiktok.posts[0].v}`)
     + t('fb', 'f', 'Facebook', fmt(s.facebook.followers), s.facebook.delta, `Reach <b>${s.facebook.reach}</b>`, `Mostly from ads`)
-    + t('ap', '', 'App Store', fmt(s.apple.downloads), s.apple.delta, `Rating <b>${s.apple.rating}★</b>`, `Search conv. <b>${s.apple.conv}%</b>`); }
+    + appleTile(s.apple); }
+function appleTile(ap) {
+  if (!ap.live) return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store</div><div class="sv">${fmt(ap.downloads)}</div><div class="sd">▲ ${ap.delta} this week</div><div class="meta">Rating <b>${ap.rating}★</b><br>Search conv. <b>${ap.conv}%</b></div></div>`;
+  return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store ${LIVE()}</div><div class="sv">${ap.testers ?? 0}</div><div class="sd" style="color:var(--gold)">TestFlight testers</div><div class="meta">${ap.builds ?? 0} builds uploaded<br>${ap.downloads ? `Downloads <b>${fmt(ap.downloads)}</b>` : 'Downloads begin at launch'}</div></div>`;
+}
 const SOCIAL_META = { instagram: ['ig', '◙', 'Instagram'], tiktok: ['tk', '♪', 'TikTok'], facebook: ['fb', 'f', 'Facebook'], apple: ['ap', '', 'App Store'] };
 let socialTab = 'instagram';
 V.social = () => { const key = socialTab, p = D.social[key], [cls, ic, name] = SOCIAL_META[key];
   const metric = key === 'apple' ? `${fmt(p.downloads)}` : `${fmt(p.followers)}`;
   const ml = key === 'apple' ? 'downloads' : 'followers';
   return ({ title: 'Social', sub: 'All four platforms in one place', init: () => area('c-soc', sliceR(p.series), key === 'tiktok' ? '#111' : key === 'facebook' ? '#1877F2' : '#8B5E2A'),
-  html: `<div class="social" style="margin-bottom:20px">${socialTiles()}</div>
+  html: `<div style="margin-bottom:14px"><button onclick="refreshApple(this)" style="border:0;border-radius:10px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:12.5px;padding:9px 15px;cursor:pointer">↻ Refresh Apple data</button> <span style="color:var(--faint);font-size:12px;margin-left:6px">App Store is connected — Instagram/TikTok/Facebook need the dad setup.</span></div>
+    <div class="social" style="margin-bottom:20px">${socialTiles()}</div>
     <div class="range" style="display:inline-flex;margin-bottom:16px">${Object.keys(SOCIAL_META).map((k) => `<button class="${k === key ? 'on' : ''}" onclick="setSocial('${k}')">${SOCIAL_META[k][2]}</button>`).join('')}</div>
     <div class="two">
       <section class="card"><h3><span class="si ${cls}" style="display:inline-flex;vertical-align:middle;margin-right:6px">${ic}</span>${name} · ${ml} growth</h3>
@@ -210,6 +215,13 @@ window.runAgents = async (btn) => {
     alert('🔄 Generating fresh content… new drafts land in a few seconds — refresh to see them.');
   } catch (e) { alert('Could not run the agents — try again.'); }
   if (btn) { btn.textContent = '🔄 Generate content now'; btn.disabled = false; }
+};
+window.refreshApple = async (btn) => {
+  if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
+  try {
+    await fetch(window.HQ_CONFIG.url + '/hq-apple', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' } });
+    await loadLive(); render();
+  } catch (e) { alert('Could not refresh Apple data — try again.'); }
 };
 
 window.findCreators = async (btn) => {
@@ -315,6 +327,16 @@ async function loadLive() {
       if (rc.mrr != null) { D.money.mrr = rc.mrr; D.money.live = true; }
       if (rc.active_subs != null) D.money.activeSubs = rc.active_subs;
       if (rc.trials != null) D.money.trials = rc.trials;
+      const ap = {};
+      d.metrics.forEach((x) => { if (x.source === 'apple' && !(x.metric in ap)) ap[x.metric] = Number(x.value); });
+      if (Object.keys(ap).length) {
+        D.social.apple.live = true;
+        if (ap.testflight_testers != null) D.social.apple.testers = ap.testflight_testers;
+        if (ap.builds != null) D.social.apple.builds = ap.builds;
+        if (ap.downloads != null) D.social.apple.downloads = ap.downloads;
+        if (ap.rating) D.social.apple.rating = ap.rating;
+        if (ap.reviews != null) D.social.apple.reviews = ap.reviews;
+      }
     }
     if (d.creators) D.creators = d.creators.map((c) => ({ handle: c.handle, followers: c.followers, tier: c.tier, reply: c.reply_likelihood, pay: c.pay, why: c.why, dm_draft: c.dm_draft, status: c.status }));
     return true;

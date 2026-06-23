@@ -118,8 +118,8 @@ window.DATA = {
   ],
 
   connections: [
-    { name: 'RevenueCat', what: 'MRR, subscribers, trials', status: 'off' },
-    { name: 'App Store Connect', what: 'Downloads, ratings, search', status: 'off' },
+    { name: 'RevenueCat', what: 'MRR, subscribers, trials', status: 'on' },
+    { name: 'App Store Connect', what: 'TestFlight, builds, downloads', status: 'on' },
     { name: 'Instagram', what: 'Followers, reach, posts', status: 'off' },
     { name: 'TikTok', what: 'Followers, views, posts', status: 'off' },
     { name: 'Facebook + Meta Ads', what: 'Ad spend, ROAS', status: 'off' },
