@@ -255,7 +255,7 @@ V.settings = () => ({ title: 'Settings', sub: 'Connections, agents & spending ca
         <div class="goalbar"><div class="gt"><span>Used this month ${LIVE()}</span><span>$${Number(D.budget.used).toFixed(2)} of $${D.budget.cap}</span></div><div class="track"><i style="width:${Math.max(1, D.budget.used / D.budget.cap * 100)}%"></i></div></div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.5">The agents physically stop when they hit this cap. Everything else (hosting, data, video) is free.</div></section>
       <section class="card"><h3>Agents</h3>${D.agents.map((a) =>
-        `<div class="toggle"><div><div class="cl" style="font-weight:700;font-size:14px">${a.name}</div><div class="cw" style="font-size:12px;color:var(--muted)">${a.on ? 'Running on schedule' : 'Turns on in Phase 3'}</div></div><div class="sw ${a.on ? '' : 'off'}"><i></i></div></div>`).join('')}</section>
+        `<div class="toggle"><div><div class="cl" style="font-weight:700;font-size:14px">${a.name}</div><div class="cw" style="font-size:12px;color:var(--muted)">${a.on ? 'On-demand — you trigger it' : 'Turns on in Phase 3'}</div></div><div class="sw ${a.on ? '' : 'off'}"><i></i></div></div>`).join('')}</section>
     </div></div>` });
 
 // ── nav + router ───────────────────────────────────────────────────────
