@@ -333,7 +333,8 @@ async function loadLive() {
         D.social.apple.live = true;
         if (ap.testflight_testers != null) D.social.apple.testers = ap.testflight_testers;
         if (ap.builds != null) D.social.apple.builds = ap.builds;
-        if (ap.downloads != null) D.social.apple.downloads = ap.downloads;
+        D.social.apple.downloads = ap.downloads ?? 0; // real (0 pre-launch), not the sample
+
         if (ap.rating) D.social.apple.rating = ap.rating;
         if (ap.reviews != null) D.social.apple.reviews = ap.reviews;
       }
