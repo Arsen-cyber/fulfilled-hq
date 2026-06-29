@@ -30,20 +30,23 @@ function area(id, series, color = '#8B5E2A') {
 // ── shared bits ────────────────────────────────────────────────────────
 const m = D.money;
 const kpi = (k, v, d, up = true) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="d ${up ? 'u' : 'd'}">${d}</div></div>`;
-const heroCard = () => `<section class="card"><div class="hero">
-  <div><div class="lbl">Monthly Recurring Revenue ${D.money.live ? LIVE() : ''}</div><div class="big">$${m.mrr}</div>
-    <div class="delta u">▲ ${m.mrrDelta}% vs last month</div>
-    <div class="goalbar"><div class="gt"><span>North Star · $${fmt(m.goal)} MRR</span><span>${Math.round(m.mrr / m.goal * 100)}%</span></div>
-    <div class="track"><i style="width:${Math.round(m.mrr / m.goal * 100)}%"></i></div></div>
-  </div><div class="chartwrap"><canvas id="c-mrr"></canvas></div></div></section>`;
-const alertsCard = () => `<section class="card"><h3>Alerts</h3><div class="feed">${D.alerts.map((a) =>
-  `<div class="fitem"><span class="fd ${a.k}"></span><div>${a.text}<div class="ft">${a.t}</div></div></div>`).join('')}</div></section>`;
+// Honest empty state — used everywhere there's no real data yet.
+const empty = (msg) => `<div style="color:var(--muted);font-size:13.5px;line-height:1.6;padding:6px 2px">${msg}</div>`;
+const heroCard = () => { const pct = m.goal ? Math.round(m.mrr / m.goal * 100) : 0;
+  return `<section class="card"><div class="hero">
+  <div><div class="lbl">Monthly Recurring Revenue ${m.live ? LIVE() : ''}</div><div class="big">$${fmt(m.mrr)}</div>
+    <div class="delta ${m.mrr ? 'u' : ''}" style="${m.mrr ? '' : 'color:var(--faint)'}">${m.mrr ? '▲ live from RevenueCat' : 'Begins when you have your first subscriber'}</div>
+    <div class="goalbar"><div class="gt"><span>North Star · $${fmt(m.goal)} MRR</span><span>${pct}%</span></div>
+    <div class="track"><i style="width:${Math.max(0, pct)}%"></i></div></div>
+  </div><div class="chartwrap">${m.mrrSeries.length ? '<canvas id="c-mrr"></canvas>' : empty('Revenue chart fills in as MRR grows.')}</div></div></section>`; };
+const alertsCard = () => `<section class="card"><h3>Alerts ${D.alerts.length ? LIVE() : ''}</h3>${D.alerts.length ? `<div class="feed">${D.alerts.map((a) =>
+  `<div class="fitem"><span class="fd ${a.k}"></span><div>${a.text}<div class="ft">${a.t}</div></div></div>`).join('')}</div>` : empty('No alerts yet — the Analyst flags wins and warnings here once there’s activity.')}</section>`;
 const LIVE = () => D.live ? '<span style="font-size:10px;font-weight:700;color:var(--up);background:rgba(62,125,84,.12);padding:2px 7px;border-radius:20px;letter-spacing:.5px">● LIVE</span>' : '';
 function timeAgo(iso) { if (!iso) return ''; const s = (Date.now() - new Date(iso).getTime()) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
 const briefingCard = () => D.briefing ? `<section class="card"><h3>Today’s briefing ${LIVE()}<span class="more">Scout</span></h3><div style="font-size:13.5px;line-height:1.6;color:var(--muted)">${D.briefing.summary}</div></section>` : '';
-const agentsCard = () => { const items = (D.runs && D.runs.length) ? D.runs.map((r) => ({ name: r.agent, text: r.summary, t: timeAgo(r.created_at), on: true })) : D.agents;
-  return `<section class="card agent"><h3>Agent activity ${LIVE()}<span class="more">live</span></h3><div class="feed">${items.map((a) =>
-  `<div class="fitem"><span class="fd ${a.on ? 'info' : 'warn'}"></span><div><span class="ai">${a.name}</span> ${a.text}<div class="ft">${a.t}</div></div></div>`).join('')}</div></section>`; };
+const agentsCard = () => { const runs = (D.runs && D.runs.length) ? D.runs.map((r) => ({ name: r.agent, text: r.summary, t: timeAgo(r.created_at), on: true })) : [];
+  return `<section class="card agent"><h3>Agent activity ${runs.length ? LIVE() : ''}<span class="more">${runs.length ? 'live' : ''}</span></h3>${runs.length ? `<div class="feed">${runs.map((a) =>
+  `<div class="fitem"><span class="fd ${a.on ? 'info' : 'warn'}"></span><div><span class="ai">${a.name}</span> ${a.text}<div class="ft">${a.t}</div></div></div>`).join('')}</div>` : empty('No agent runs yet — tap “Generate content now” in the Content queue.')}</section>`; };
 const approveCard = () => { const v = D.content[0]; if (!v) return '';
   const thumb = v.thumb ? `<img src="${v.thumb}" alt="">` : `<div style="width:54px;height:96px;border-radius:8px;background:linear-gradient(160deg,#3a2f22,#17110a);display:flex;align-items:center;justify-content:center;color:#caa86f;font-size:22px">${(v.type || '')[0] === 'C' ? '❏' : (v.type || '')[0] === 'V' ? '▶' : '✍'}</div>`;
   return `<section class="card"><h3>Awaiting approval ${LIVE()}</h3><div class="approve">
@@ -57,12 +60,12 @@ V.overview = () => ({ title: 'Overview', sub: D.updated, note: true, init: () =>
   html: `<div class="grid"><div class="col">
     ${heroCard()}
     <section class="kpis six">
-      ${kpi('Active subscribers', m.activeSubs, '▲ ' + m.subsDelta)}
-      ${kpi('Free trials active', m.trials, '▲ ' + m.trialsDelta)}
-      ${kpi('Trial → Paid', m.trialToPaid + '%', '▲ ' + m.t2pDelta + '%')}
-      ${kpi('Churn (monthly)', m.churn + '%', '▼ ' + Math.abs(m.churnDelta) + '%')}
-      ${kpi('Lifetime value', '$' + m.ltv, '▲ $' + m.ltvDelta)}
-      ${kpi('Ad ROAS', D.ads.roas + '×', '▲ 0.3×')}
+      ${kpi('Active subscribers', fmt(m.activeSubs), m.activeSubs ? 'live' : 'after launch')}
+      ${kpi('Free trials active', fmt(m.trials), m.trials ? 'live' : 'after launch')}
+      ${kpi('Trial → Paid', '—', 'after launch')}
+      ${kpi('Churn (monthly)', '—', 'after launch')}
+      ${kpi('Lifetime value', '—', 'after launch')}
+      ${kpi('Ad ROAS', '—', 'connect Ads')}
     </section>
     ${funnelCard()} ${adsCard()}
     <section><div class="card" style="padding-bottom:8px"><h3 style="margin-bottom:4px">Social · all platforms</h3></div>
@@ -71,91 +74,89 @@ V.overview = () => ({ title: 'Overview', sub: D.updated, note: true, init: () =>
   </div><div class="col rail">${briefingCard()} ${approveCard()} ${alertsCard()} ${agentsCard()} ${commentsCard(true)}</div></div>` });
 
 // Money
-V.money = () => ({ title: 'Money', sub: 'Revenue, subscribers & retention', init: () => { area('c-mrr2', sliceR(m.mrrSeries)); area('c-subs', sliceR(m.subsSeries), '#3E7D54'); },
+V.money = () => { const pct = m.goal ? Math.round(m.mrr / m.goal * 100) : 0;
+  return ({ title: 'Money', sub: 'Revenue, subscribers & retention', init: () => { if (m.mrrSeries.length) area('c-mrr2', sliceR(m.mrrSeries)); if (m.subsSeries.length) area('c-subs', sliceR(m.subsSeries), '#3E7D54'); },
   html: `<div class="two" style="margin-bottom:20px">
-    <section class="card"><h3>MRR · last 12 months</h3><div class="hero" style="grid-template-columns:1fr 1.4fr">
-      <div><div class="big serif" style="font-size:62px">$${m.mrr}</div><div class="delta u">▲ ${m.mrrDelta}%</div>
-        <div class="goalbar"><div class="gt"><span>to $${fmt(m.goal)}</span><span>${Math.round(m.mrr / m.goal * 100)}%</span></div><div class="track"><i style="width:${Math.round(m.mrr / m.goal * 100)}%"></i></div></div></div>
-      <div class="chartwrap"><canvas id="c-mrr2"></canvas></div></div></section>
-    <section class="card"><h3>Subscribers growing</h3><div class="hero" style="grid-template-columns:1fr 1.4fr">
-      <div><div class="big serif" style="font-size:62px">${m.activeSubs}</div><div class="delta u">▲ ${m.subsDelta} this month</div></div>
-      <div class="chartwrap"><canvas id="c-subs"></canvas></div></div></section></div>
+    <section class="card"><h3>MRR ${m.live ? LIVE() : ''}</h3><div class="hero" style="grid-template-columns:1fr 1.4fr">
+      <div><div class="big serif" style="font-size:62px">$${fmt(m.mrr)}</div><div class="delta ${m.mrr ? 'u' : ''}" style="${m.mrr ? '' : 'color:var(--faint)'}">${m.mrr ? 'live from RevenueCat' : 'starts at first sale'}</div>
+        <div class="goalbar"><div class="gt"><span>to $${fmt(m.goal)}</span><span>${pct}%</span></div><div class="track"><i style="width:${Math.max(0, pct)}%"></i></div></div></div>
+      <div class="chartwrap">${m.mrrSeries.length ? '<canvas id="c-mrr2"></canvas>' : empty('Chart builds as MRR grows.')}</div></div></section>
+    <section class="card"><h3>Subscribers ${m.live ? LIVE() : ''}</h3><div class="hero" style="grid-template-columns:1fr 1.4fr">
+      <div><div class="big serif" style="font-size:62px">${fmt(m.activeSubs)}</div><div class="delta ${m.activeSubs ? 'u' : ''}" style="${m.activeSubs ? '' : 'color:var(--faint)'}">${m.activeSubs ? 'active now' : 'none yet — launch first'}</div></div>
+      <div class="chartwrap">${m.subsSeries.length ? '<canvas id="c-subs"></canvas>' : empty('Chart builds as subscribers grow.')}</div></div></section></div>
     <section class="kpis six" style="margin-bottom:20px">
-      ${kpi('Trial → Paid', m.trialToPaid + '%', '▲ ' + m.t2pDelta + '%')}
-      ${kpi('Churn', m.churn + '%', '▼ ' + Math.abs(m.churnDelta) + '%')}
-      ${kpi('Lifetime value', '$' + m.ltv, '▲ $' + m.ltvDelta)}
-      ${kpi('ARPU', '$' + m.arpu.toFixed(2), 'per user')}
-      ${kpi('Active trials', m.trials, '▲ ' + m.trialsDelta)}
-      ${kpi('Refund rate', '1.8%', '▼ 0.4%')}
+      ${kpi('Trial → Paid', '—', 'after launch')}
+      ${kpi('Churn', '—', 'after launch')}
+      ${kpi('Lifetime value', '—', 'after launch')}
+      ${kpi('ARPU', '—', 'after launch')}
+      ${kpi('Active trials', fmt(m.trials), m.trials ? 'live' : 'after launch')}
+      ${kpi('Refund rate', '—', 'after launch')}
     </section>
     <div class="two">
-      <section class="card"><h3>Retention · how long people stay</h3><div class="funnel">
+      <section class="card"><h3>Retention · how long people stay</h3>${m.retention.length ? `<div class="funnel">
         ${['Day 0', 'Day 1', 'Day 3', 'Day 7', 'Day 14', 'Day 30', 'Day 60'].map((d, i) =>
           `<div class="fstage"><div class="fn">${d}</div><div class="fbar" style="width:${m.retention[i]}%">${m.retention[i]}%</div><div class="fv"></div></div>`).join('')}
-      </div></section>
-      <section class="card"><h3>Recent transactions</h3><table class="table"><tbody>
+      </div>` : empty('Retention shows up once people have used the app over time (post-launch).')}</section>
+      <section class="card"><h3>Recent transactions ${m.transactions.length ? LIVE() : ''}</h3>${m.transactions.length ? `<table class="table"><tbody>
         ${m.transactions.map((t) => `<tr><td><b>${t.who}</b><br><span style="color:var(--muted);font-size:12px">${t.what}</span></td><td class="num" style="color:${t.neg ? 'var(--down)' : 'var(--up)'}">${t.amt}</td><td class="num">${t.t}</td></tr>`).join('')}
-      </tbody></table></section>
-    </div>` });
+      </tbody></table>` : empty('Trials, renewals and refunds will list here as they happen.')}</section>
+    </div>` }); };
 
 // Funnel
-function funnelCard() { return `<section class="card"><h3>Funnel · where people drop off <span class="more">last 30 days</span></h3><div class="funnel">${D.funnel.map((s) =>
-  `<div class="fstage"><div class="fn">${s.stage}${s.sub ? `<small>${s.sub}</small>` : ''}</div><div class="fbar" style="width:${s.w}%">${fmt(s.n)}</div><div class="fv"><b>${s.note}</b></div></div>`).join('')}</div></section>`; }
+function funnelCard() { return `<section class="card"><h3>Funnel · where people drop off</h3>${D.funnel.length ? `<div class="funnel">${D.funnel.map((s) =>
+  `<div class="fstage"><div class="fn">${s.stage}${s.sub ? `<small>${s.sub}</small>` : ''}</div><div class="fbar" style="width:${s.w}%">${fmt(s.n)}</div><div class="fv"><b>${s.note}</b></div></div>`).join('')}</div>` : empty('No funnel yet. This fills in once ads are running and installs → trials → paid start flowing (after launch + Ads connected).')}</section>`; }
 V.funnel = () => ({ title: 'Funnel', sub: 'The journey from ad to paid subscriber',
-  html: `<div style="max-width:840px">${funnelCard()}
-    <section class="card" style="margin-top:20px"><h3>What this tells you</h3>
-      <div style="font-size:14px;line-height:1.7;color:var(--muted)">
-      • Of <b style="color:var(--ink)">48,200</b> people who saw an ad, <b style="color:var(--ink)">2.6%</b> installed — healthy for this category.<br>
-      • <b style="color:var(--ink)">25%</b> of installs start a trial. The biggest leak is here — worth testing the onboarding.<br>
-      • <b style="color:var(--ink)">41%</b> of trials become paying. Strong — your 3-day trial is converting.<br>
-      • Every paying subscriber costs <b style="color:var(--ink)">$3.28</b> in ads and is worth <b style="color:var(--ink)">$43</b> over their lifetime. That's the whole game.</div></section></div>` });
+  html: `<div style="max-width:840px">${funnelCard()}</div>` });
 
 // Ads
-function adsCard() { const a = D.ads; return `<section class="card"><h3>Ads · Meta (Instagram + Facebook) <span class="more">June</span></h3>
+function adsCard() { const a = D.ads; if (!a.connected || !a.creatives.length) return `<section class="card"><h3>Ads · Meta (Instagram + Facebook)</h3>${empty('Ads aren’t connected yet. This needs a Meta Ads account (adult-owned) and an active campaign. Once you’re running ads, spend, cost-per-install, ROAS and per-creative results show here.')}</section>`;
+  return `<section class="card"><h3>Ads · Meta (Instagram + Facebook) ${LIVE()}</h3>
   <div class="adsum"><div>Spend<b>$${a.spend}</b></div><div>Cost / install<b>$${a.cpi}</b></div><div>Cost / sub<b>$${a.cps}</b></div><div>ROAS<b>${a.roas}×</b></div></div>
   <div class="adrow h"><span>Creative</span><span class="num">Installs</span><span class="num">Spend</span><span class="num">ROAS</span><span></span></div>
   ${a.creatives.map((c) => `<div class="adrow"><span class="an">${c.name}<small>${c.plat}</small></span><span class="num">${c.installs}</span><span class="num">$${c.spend}</span><span class="num">${c.roas}×</span><span class="tag ${c.tag}">${c.tag === 'scale' ? 'Scale ↑' : c.tag === 'cut' ? 'Cut ↓' : 'Watch'}</span></div>`).join('')}</section>`; }
-V.ads = () => ({ title: 'Ads', sub: 'Spend, return, and which creative is winning', init: () => area('c-spend', sliceR(D.ads.spendSeries), '#B07A33'),
-  html: `<div style="max-width:900px">
-    <section class="card" style="margin-bottom:20px"><h3>Daily spend · last 14 days</h3><div class="chartwrap tall"><canvas id="c-spend"></canvas></div></section>
-    ${adsCard()}
-    <section class="card" style="margin-top:20px"><h3>Planner suggests</h3><div style="font-size:14px;line-height:1.7;color:var(--muted)">
-      • Move budget from <b style="color:var(--ink)">“Day 1→30”</b> (1.1× — losing money) into <b style="color:var(--ink)">“Overthinking”</b> (2.4×).<br>
-      • Test a 4th creative this week — Writer has 4 hooks ready in your Content queue.<br>
-      • At 1.7× blended ROAS, every $10/day spent ≈ <b style="color:var(--ink)">$17 back</b>. Safe to scale slowly.</div></section></div>` });
+V.ads = () => ({ title: 'Ads', sub: 'Spend, return, and which creative is winning',
+  html: `<div style="max-width:900px">${adsCard()}</div>` });
 
 // Social
 function socialTiles() { const s = D.social;
-  const t = (cls, ic, name, val, dl, l1, l2) => `<div class="stile"><div class="sh"><span class="si ${cls}">${ic}</span>${name}</div><div class="sv">${val}</div><div class="sd">▲ ${dl} this week</div><div class="meta">${l1}<br>${l2}</div></div>`;
-  return t('ig', '◙', 'Instagram', fmt(s.instagram.followers), s.instagram.delta, `Reach <b>${s.instagram.reach}</b>`, `Top: <b>${s.instagram.posts[0].t}</b> · ${s.instagram.posts[0].v}`)
-    + t('tk', '♪', 'TikTok', fmt(s.tiktok.followers), s.tiktok.delta, `Views <b>${s.tiktok.reach}</b>`, `Top: <b>${s.tiktok.posts[0].t}</b> · ${s.tiktok.posts[0].v}`)
-    + t('fb', 'f', 'Facebook', fmt(s.facebook.followers), s.facebook.delta, `Reach <b>${s.facebook.reach}</b>`, `Mostly from ads`)
+  // Not-connected platforms show an honest placeholder instead of fake numbers.
+  const off = (cls, ic, name) => `<div class="stile" style="opacity:.72"><div class="sh"><span class="si ${cls}">${ic}</span>${name}</div><div class="sv" style="font-size:22px;color:var(--faint)">Not connected</div><div class="sd" style="color:var(--faint)">needs account setup</div><div class="meta">Followers, reach & posts appear once connected.</div></div>`;
+  return off('ig', '◙', 'Instagram')
+    + off('tk', '♪', 'TikTok')
+    + off('fb', 'f', 'Facebook')
     + appleTile(s.apple); }
 function appleTile(ap) {
-  if (!ap.live) return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store</div><div class="sv">${fmt(ap.downloads)}</div><div class="sd">▲ ${ap.delta} this week</div><div class="meta">Rating <b>${ap.rating}★</b><br>Search conv. <b>${ap.conv}%</b></div></div>`;
+  if (!ap.live) return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store</div><div class="sv" style="font-size:22px;color:var(--faint)">Loading…</div><div class="sd" style="color:var(--faint)">tap “Refresh Apple data”</div><div class="meta">TestFlight testers, builds & rating appear here.</div></div>`;
   return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store ${LIVE()}</div><div class="sv">${ap.testers ?? 0}</div><div class="sd" style="color:var(--gold)">TestFlight testers</div><div class="meta">${ap.builds ?? 0} builds uploaded<br>${ap.downloads ? `Downloads <b>${fmt(ap.downloads)}</b>` : 'Downloads begin at launch'}</div></div>`;
 }
 const SOCIAL_META = { instagram: ['ig', '◙', 'Instagram'], tiktok: ['tk', '♪', 'TikTok'], facebook: ['fb', 'f', 'Facebook'], apple: ['ap', '', 'App Store'] };
 let socialTab = 'instagram';
 V.social = () => { const key = socialTab, p = D.social[key], [cls, ic, name] = SOCIAL_META[key];
-  const metric = key === 'apple' ? `${fmt(p.downloads)}` : `${fmt(p.followers)}`;
-  const ml = key === 'apple' ? 'downloads' : 'followers';
-  return ({ title: 'Social', sub: 'All four platforms in one place', init: () => area('c-soc', sliceR(p.series), key === 'tiktok' ? '#111' : key === 'facebook' ? '#1877F2' : '#8B5E2A'),
-  html: `<div style="margin-bottom:14px"><button onclick="refreshApple(this)" style="border:0;border-radius:10px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:12.5px;padding:9px 15px;cursor:pointer">↻ Refresh Apple data</button> <span style="color:var(--faint);font-size:12px;margin-left:6px">App Store is connected — Instagram/TikTok/Facebook need the dad setup.</span></div>
+  const isApple = key === 'apple';
+  const connected = isApple ? true : !!p.connected;
+  const metric = isApple ? `${p.testers ?? 0}` : `${fmt(p.followers)}`;
+  const head = `<div style="margin-bottom:14px"><button onclick="refreshApple(this)" style="border:0;border-radius:10px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:12.5px;padding:9px 15px;cursor:pointer">↻ Refresh Apple data</button> <span style="color:var(--faint);font-size:12px;margin-left:6px">App Store is connected — Instagram/TikTok/Facebook need account setup.</span></div>
     <div class="social" style="margin-bottom:20px">${socialTiles()}</div>
-    <div class="range" style="display:inline-flex;margin-bottom:16px">${Object.keys(SOCIAL_META).map((k) => `<button class="${k === key ? 'on' : ''}" onclick="setSocial('${k}')">${SOCIAL_META[k][2]}</button>`).join('')}</div>
+    <div class="range" style="display:inline-flex;margin-bottom:16px">${Object.keys(SOCIAL_META).map((k) => `<button class="${k === key ? 'on' : ''}" onclick="setSocial('${k}')">${SOCIAL_META[k][2]}</button>`).join('')}</div>`;
+  // Non-Apple, not connected → honest connect prompt, no fake detail.
+  if (!connected) return ({ title: 'Social', sub: 'All four platforms in one place',
+    html: `${head}<section class="card"><h3><span class="si ${cls}" style="display:inline-flex;vertical-align:middle;margin-right:6px">${ic}</span>${name}</h3>${empty(`${name} isn’t connected yet. Connecting it needs an adult-owned ${key === 'tiktok' ? 'TikTok' : 'Meta'} developer account and a one-time app approval. Once connected, followers, reach and top posts show here.`)}</section>` });
+  // Apple — real data.
+  return ({ title: 'Social', sub: 'All four platforms in one place', init: () => { if (p.series.length) area('c-soc', sliceR(p.series), '#8B5E2A'); },
+  html: `${head}
     <div class="two">
-      <section class="card"><h3><span class="si ${cls}" style="display:inline-flex;vertical-align:middle;margin-right:6px">${ic}</span>${name} · ${ml} growth</h3>
-        <div class="hero" style="grid-template-columns:1fr 1.5fr"><div><div class="big serif" style="font-size:54px">${metric}</div><div class="delta u">▲ ${p.delta} this week</div>
-        <div class="meta" style="margin-top:14px;font-size:13px;color:var(--muted)">${key === 'apple' ? `Rating ${p.rating}★ · search conv ${p.conv}%` : `Reach/views ${p.reach} · engagement ${p.eng}`}</div></div>
-        <div class="chartwrap"><canvas id="c-soc"></canvas></div></div></section>
-      <section class="card"><h3>Top ${key === 'apple' ? 'search terms' : 'posts'}</h3><div class="postgrid">${p.posts.map((x) =>
-        `<div class="post"><div class="pt">${x.t}</div><div class="pv">${x.v}<small>${x.s}</small></div></div>`).join('')}</div></section>
+      <section class="card"><h3><span class="si ${cls}" style="display:inline-flex;vertical-align:middle;margin-right:6px">${ic}</span>${name} ${p.live ? LIVE() : ''}</h3>
+        <div class="hero" style="grid-template-columns:1fr 1.5fr"><div><div class="big serif" style="font-size:54px">${metric}</div><div class="delta" style="color:var(--gold)">TestFlight testers</div>
+        <div class="meta" style="margin-top:14px;font-size:13px;color:var(--muted)">${p.builds ?? 0} builds uploaded${p.rating ? ` · Rating ${p.rating}★` : ''}<br>${p.downloads ? `Downloads <b>${fmt(p.downloads)}</b>` : 'Downloads begin at launch'}</div></div>
+        <div class="chartwrap">${p.series.length ? '<canvas id="c-soc"></canvas>' : empty('Growth chart begins at launch.')}</div></div></section>
+      <section class="card"><h3>App Store</h3>${p.posts.length ? `<div class="postgrid">${p.posts.map((x) =>
+        `<div class="post"><div class="pt">${x.t}</div><div class="pv">${x.v}<small>${x.s}</small></div></div>`).join('')}</div>` : empty('Search-term rankings appear once the app is live in the store.')}</section>
     </div>` }); };
 window.setSocial = (k) => { socialTab = k; render(); };
 
 // Reviews
 function reviewsCard(short) { const r = D.reviews; const items = short ? r.items.slice(0, 3) : r.items;
+  if (!items.length) return `<section class="card"><h3>App Store reviews</h3>${empty('No reviews yet. Once the app is live and people start rating it, reviews land here sorted by sentiment, with draft replies.')}</section>`;
   return `<section class="card"><h3>App Store reviews <span class="more">${r.items.length} recent</span></h3>
   ${short ? '' : `<div class="sentibar"><i class="p" style="width:${r.breakdown.pos}%"></i><i class="n" style="width:${r.breakdown.neu}%"></i><i class="g" style="width:${r.breakdown.neg}%"></i></div>`}
   <div class="rev">${items.map((x) => `<div class="r"><div class="rh"><span class="stars">${'★'.repeat(x.stars)}${'☆'.repeat(5 - x.stars)}</span><span class="chip ${x.chip}">${x.chip === 'pos' ? 'Positive' : x.chip === 'neg' ? 'Needs reply' : 'Feature idea'}</span></div><div class="rt">“${x.text}”</div><div class="rmeta">${x.who} · ${x.t}</div><span class="draft">✍️ Draft reply →</span></div>`).join('')}</div></section>`; }
@@ -164,17 +165,15 @@ V.reviews = () => ({ title: 'Reviews', sub: 'Every App Store review, sorted by s
 
 // Competitors
 function competitorsCard(short) { const list = short ? D.competitors.slice(0, 3) : D.competitors;
+  if (!list.length) return `<section class="card"><h3>Competitor watch · Meta Ad Library</h3>${empty('Not set up yet. The Meta Ad Library is public and free — once wired up, this shows which rival apps are running ads and what angles they’re testing.')}</section>`;
   return `<section class="card"><h3>Competitor watch · Meta Ad Library <span class="more">public · free</span></h3><div class="comp">${list.map((c) =>
     `<div class="c"><div><div class="cn">${c.name}</div><div class="cs">${c.ads} ads running · ${c.note}</div></div><div class="cb">See ads</div></div>`).join('')}</div></section>`; }
 V.competitors = () => ({ title: 'Competitors', sub: 'What rival apps are actually running — free from Meta',
-  html: `<div style="max-width:760px">${competitorsCard(false)}
-    <section class="card" style="margin-top:20px"><h3>Scout noticed</h3><div style="font-size:14px;line-height:1.7;color:var(--muted)">
-    • Two competitors just moved to <b style="color:var(--ink)">$2.99/wk</b> — your $3.99 is still fine given your trial converts at 41%.<br>
-    • <b style="color:var(--ink)">Faceless UGC + trending audio</b> is the dominant format right now. Your “Overthinking” ad already fits it.<br>
-    • “RisingYou” is copying the before/after format — worth getting ahead with fresh angles.</div></section></div>` });
+  html: `<div style="max-width:760px">${competitorsCard(false)}</div>` });
 
 // Comments
 function commentsCard(short) { const list = short ? D.comments.slice(0, 3) : D.comments;
+  if (!list.length) return `<section class="card"><h3>Comments · sentiment</h3>${empty('Needs Instagram/TikTok connected. Once they’re linked, your post comments show here grouped by sentiment, with draft replies for questions and objections.')}</section>`;
   return `<section class="card"><h3>Comments · sentiment</h3><div class="cmt">${list.map((c) =>
     `<div class="cm"><div class="cmh"><span>${c.who} · ${c.plat}</span><span class="chip ${c.chip}">${c.chip === 'pos' ? 'Positive' : c.chip === 'neg' ? 'Objection' : 'Question'}</span></div><div class="cmt2">“${c.text}”</div>${c.chip !== 'pos' ? '<span class="draft">✍️ Draft reply →</span>' : ''}</div>`).join('')}</div></section>`; }
 V.comments = () => ({ title: 'Comments', sub: 'Your IG + TikTok comments, with draft replies',
@@ -248,7 +247,7 @@ window.creatorStatus = async (handle, status) => {
 // Content queue
 V.content = () => ({ title: 'Content queue', sub: 'What the agents built — nothing posts until you approve',
   html: `<div style="margin-bottom:18px"><button onclick="runAgents(this)" style="border:0;border-radius:11px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:13.5px;padding:12px 18px;cursor:pointer">🔄 Generate content now</button> <span style="color:var(--faint);font-size:12.5px;margin-left:8px">On-demand only — ~0.3¢ per run, nothing runs on its own.</span></div>
-  ${D.briefing ? `<div style="margin-bottom:20px;max-width:980px">${briefingCard()}</div>` : ''}<div class="two">${D.content.map((c) => `<div class="contentcard">
+  ${D.briefing ? `<div style="margin-bottom:20px;max-width:980px">${briefingCard()}</div>` : ''}${!D.content.length ? empty('No drafts yet — tap “Generate content now.” The agents write a briefing + 3 on-brand drafts (~0.3¢) for you to review here. Nothing posts until you approve.') : ''}<div class="two">${D.content.map((c) => `<div class="contentcard">
     <div class="ch"><div class="thumb">${c.thumb ? `<img src="${c.thumb}" class="thumb">` : (c.type[0] === 'V' ? '▶' : c.type[0] === 'C' ? '❏' : '✍')}</div>
       <div><div class="meta">${c.type} · ${c.by} → ${c.for}</div><div class="ti">${c.title}</div></div></div>
     <span class="statuspill ${c.status}">${c.status === 'ready' ? 'Ready to post' : 'Needs your review'}</span>
@@ -267,7 +266,7 @@ V.settings = () => ({ title: 'Settings', sub: 'Connections, agents & spending ca
         <div class="goalbar"><div class="gt"><span>Used this month ${LIVE()}</span><span>$${Number(D.budget.used).toFixed(2)} of $${D.budget.cap}</span></div><div class="track"><i style="width:${Math.max(1, D.budget.used / D.budget.cap * 100)}%"></i></div></div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.5">The agents physically stop when they hit this cap. Everything else (hosting, data, video) is free.</div></section>
       <section class="card"><h3>Agents</h3>${D.agents.map((a) =>
-        `<div class="toggle"><div><div class="cl" style="font-weight:700;font-size:14px">${a.name}</div><div class="cw" style="font-size:12px;color:var(--muted)">${a.on ? 'On-demand — you trigger it' : 'Turns on in Phase 3'}</div></div><div class="sw ${a.on ? '' : 'off'}"><i></i></div></div>`).join('')}</section>
+        `<div class="toggle"><div><div class="cl" style="font-weight:700;font-size:14px">${a.name}</div><div class="cw" style="font-size:12px;color:var(--muted)">${a.text}${a.on ? ' · on-demand' : ' · not active yet'}</div></div><div class="sw ${a.on ? '' : 'off'}"><i></i></div></div>`).join('')}</section>
     </div></div>` });
 
 // ── nav + router ───────────────────────────────────────────────────────
@@ -291,7 +290,7 @@ function render() {
   $('#nav').innerHTML = renderNav(view);
   $('#main').innerHTML = `<div class="top"><div><h1>${r.title}</h1><div class="sub">${r.sub}</div></div>
     ${rangeTabs()}</div>
-    ${r.note ? `<div class="note">⚠️ <b>Preview with sample numbers.</b> The next step is connecting your real accounts (Settings → Connect). Then every number here goes live.</div>` : ''}
+    ${r.note ? `<div class="note">✅ <b>Live data only.</b> RevenueCat, App Store & the agents are connected. Empty sections fill in as you launch, grow, and connect Instagram/TikTok/Ads (Settings → Connect).</div>` : ''}
     ${r.html}`;
   if (r.init) setTimeout(r.init, 30);
   $('#main').scrollTop = 0; window.scrollTo(0, 0);
