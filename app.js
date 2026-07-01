@@ -32,6 +32,12 @@ const m = D.money;
 const kpi = (k, v, d, up = true) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="d ${up ? 'u' : 'd'}">${d}</div></div>`;
 // Honest empty state — used everywhere there's no real data yet.
 const empty = (msg) => `<div style="color:var(--muted);font-size:13.5px;line-height:1.6;padding:6px 2px">${msg}</div>`;
+// HTML-escape any value that comes from the backend — AI-written text (briefing,
+// content, agent summaries) and especially WEB-SCRAPED creator data — before it
+// goes into innerHTML. Stops a malicious scraped profile / injected string from
+// running script in the dashboard (stored XSS). Trusted static template markup
+// is never passed through this.
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const heroCard = () => { const pct = m.goal ? Math.round(m.mrr / m.goal * 100) : 0;
   return `<section class="card"><div class="hero">
   <div><div class="lbl">Monthly Recurring Revenue ${m.live ? LIVE() : ''}</div><div class="big">$${fmt(m.mrr)}</div>
@@ -43,14 +49,14 @@ const alertsCard = () => `<section class="card"><h3>Alerts ${D.alerts.length ? L
   `<div class="fitem"><span class="fd ${a.k}"></span><div>${a.text}<div class="ft">${a.t}</div></div></div>`).join('')}</div>` : empty('No alerts yet — the Analyst flags wins and warnings here once there’s activity.')}</section>`;
 const LIVE = () => D.live ? '<span style="font-size:10px;font-weight:700;color:var(--up);background:rgba(62,125,84,.12);padding:2px 7px;border-radius:20px;letter-spacing:.5px">● LIVE</span>' : '';
 function timeAgo(iso) { if (!iso) return ''; const s = (Date.now() - new Date(iso).getTime()) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + 'h ago'; return Math.floor(s / 86400) + 'd ago'; }
-const briefingCard = () => D.briefing ? `<section class="card"><h3>Today’s briefing ${LIVE()}<span class="more">Scout</span></h3><div style="font-size:13.5px;line-height:1.6;color:var(--muted)">${D.briefing.summary}</div></section>` : '';
+const briefingCard = () => D.briefing ? `<section class="card"><h3>Today’s briefing ${LIVE()}<span class="more">Scout</span></h3><div style="font-size:13.5px;line-height:1.6;color:var(--muted)">${esc(D.briefing.summary)}</div></section>` : '';
 const agentsCard = () => { const runs = (D.runs && D.runs.length) ? D.runs.map((r) => ({ name: r.agent, text: r.summary, t: timeAgo(r.created_at), on: true })) : [];
   return `<section class="card agent"><h3>Agent activity ${runs.length ? LIVE() : ''}<span class="more">${runs.length ? 'live' : ''}</span></h3>${runs.length ? `<div class="feed">${runs.map((a) =>
-  `<div class="fitem"><span class="fd ${a.on ? 'info' : 'warn'}"></span><div><span class="ai">${a.name}</span> ${a.text}<div class="ft">${a.t}</div></div></div>`).join('')}</div>` : empty('No agent runs yet — tap “Generate content now” in the Content queue.')}</section>`; };
+  `<div class="fitem"><span class="fd ${a.on ? 'info' : 'warn'}"></span><div><span class="ai">${esc(a.name)}</span> ${esc(a.text)}<div class="ft">${a.t}</div></div></div>`).join('')}</div>` : empty('No agent runs yet — tap “Generate content now” in the Content queue.')}</section>`; };
 const approveCard = () => { const v = D.content[0]; if (!v) return '';
   const thumb = v.thumb ? `<img src="${v.thumb}" alt="">` : `<div style="width:54px;height:96px;border-radius:8px;background:linear-gradient(160deg,#3a2f22,#17110a);display:flex;align-items:center;justify-content:center;color:#caa86f;font-size:22px">${(v.type || '')[0] === 'C' ? '❏' : (v.type || '')[0] === 'V' ? '▶' : '✍'}</div>`;
   return `<section class="card"><h3>Awaiting approval ${LIVE()}</h3><div class="approve">
-  <div class="vid">${thumb}<div><div class="vt">${v.title}</div><div class="vs">By ${v.by || 'Writer'} · ${v.for}</div></div></div>
+  <div class="vid">${thumb}<div><div class="vt">${esc(v.title)}</div><div class="vs">By ${esc(v.by || 'Writer')} · ${esc(v.for)}</div></div></div>
   <div class="btns"><button class="ok">Approve & schedule</button><button class="no">Tweak</button></div></div></section>`; };
 
 // ── VIEWS ──────────────────────────────────────────────────────────────
@@ -196,15 +202,15 @@ V.creators = () => {
   <div class="range" style="display:inline-flex;margin-bottom:18px;flex-wrap:wrap">${CR_TIERS.map((t) => `<button class="${t === CREATOR_TIER ? 'on' : ''}" onclick="setCreatorTier('${t}')">${t}${cnt(t) ? ` · ${cnt(t)}` : ''}</button>`).join('')}</div>
   ${list.length ? `<div class="two">${list.map((c) => `<div class="contentcard">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <span class="chip" style="background:rgba(176,122,51,.12);color:var(--goldB)">${c.tier || '—'}</span>
-      ${c.reply ? `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${REPLY_BG[c.reply] || 'rgba(26,18,10,.07)'};color:${REPLY_COL[c.reply] || 'var(--muted)'}">${c.reply} reply odds</span>` : ''}
+      <span class="chip" style="background:rgba(176,122,51,.12);color:var(--goldB)">${esc(c.tier || '—')}</span>
+      ${c.reply ? `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${REPLY_BG[c.reply] || 'rgba(26,18,10,.07)'};color:${REPLY_COL[c.reply] || 'var(--muted)'}">${esc(c.reply)} reply odds</span>` : ''}
     </div>
-    <div class="ch"><div><div class="meta">Instagram · ${c.followers || '—'} followers (est.)</div><div class="ti">${c.handle}</div></div></div>
-    <div style="font-size:12.5px;color:var(--muted);line-height:1.5">${c.why || ''}</div>
-    ${c.pay ? `<div style="font-size:12.5px;color:var(--ink);background:var(--bone);border-radius:10px;padding:9px 12px">💰 <b>Suggested:</b> ${c.pay}</div>` : ''}
-    <div class="cap" id="dm-${c._i}">${c.dm_draft || ''}</div>
-    <div class="btns"><button class="ok" onclick="copyDM(${c._i})">Copy DM</button><button class="no" onclick="openIG('${c.handle}')">Open profile ↗</button></div>
-    <div style="display:flex;gap:8px"><button onclick="creatorStatus('${c.handle}','contacted')" style="flex:1;border:0;border-radius:9px;background:rgba(62,125,84,.12);color:var(--up);font:inherit;font-weight:700;font-size:12px;padding:8px;cursor:pointer">✓ Contacted</button><button onclick="creatorStatus('${c.handle}','skip')" style="flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12px;padding:8px 14px;border-radius:9px;cursor:pointer">Skip</button></div>
+    <div class="ch"><div><div class="meta">Instagram · ${esc(c.followers || '—')} followers (est.)</div><div class="ti">${esc(c.handle)}</div></div></div>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.5">${esc(c.why || '')}</div>
+    ${c.pay ? `<div style="font-size:12.5px;color:var(--ink);background:var(--bone);border-radius:10px;padding:9px 12px">💰 <b>Suggested:</b> ${esc(c.pay)}</div>` : ''}
+    <div class="cap" id="dm-${c._i}">${esc(c.dm_draft || '')}</div>
+    <div class="btns"><button class="ok" onclick="copyDM(${c._i})">Copy DM</button><button class="no" onclick="openIG('${(c.handle || '').replace(/[^\w.@-]/g, '')}')">Open profile ↗</button></div>
+    <div style="display:flex;gap:8px"><button onclick="creatorStatus('${(c.handle || '').replace(/[^\w.@-]/g, '')}','contacted')" style="flex:1;border:0;border-radius:9px;background:rgba(62,125,84,.12);color:var(--up);font:inherit;font-weight:700;font-size:12px;padding:8px;cursor:pointer">✓ Contacted</button><button onclick="creatorStatus('${(c.handle || '').replace(/[^\w.@-]/g, '')}','skip')" style="flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:12px;padding:8px 14px;border-radius:9px;cursor:pointer">Skip</button></div>
   </div>`).join('')}</div>` : `<div style="color:var(--muted);font-size:14px;max-width:600px">No creators in this category yet — tap <b>“Find creators now.”</b> The Scout searches the web for real manifestation creators and tags each with size, reply odds & suggested pay (~1 min, then refresh).</div>`}` }); };
 window.setCreatorTier = (t) => { CREATOR_TIER = t; render(); };
 window.runAgents = async (btn) => {
@@ -249,9 +255,9 @@ V.content = () => ({ title: 'Content queue', sub: 'What the agents built — not
   html: `<div style="margin-bottom:18px"><button onclick="runAgents(this)" style="border:0;border-radius:11px;background:var(--ink);color:#F7F3EE;font:inherit;font-weight:700;font-size:13.5px;padding:12px 18px;cursor:pointer">🔄 Generate content now</button> <span style="color:var(--faint);font-size:12.5px;margin-left:8px">On-demand only — ~0.3¢ per run, nothing runs on its own.</span></div>
   ${D.briefing ? `<div style="margin-bottom:20px;max-width:980px">${briefingCard()}</div>` : ''}${!D.content.length ? empty('No drafts yet — tap “Generate content now.” The agents write a briefing + 3 on-brand drafts (~0.3¢) for you to review here. Nothing posts until you approve.') : ''}<div class="two">${D.content.map((c) => `<div class="contentcard">
     <div class="ch"><div class="thumb">${c.thumb ? `<img src="${c.thumb}" class="thumb">` : (c.type[0] === 'V' ? '▶' : c.type[0] === 'C' ? '❏' : '✍')}</div>
-      <div><div class="meta">${c.type} · ${c.by} → ${c.for}</div><div class="ti">${c.title}</div></div></div>
+      <div><div class="meta">${esc(c.type)} · ${esc(c.by)} → ${esc(c.for)}</div><div class="ti">${esc(c.title)}</div></div></div>
     <span class="statuspill ${c.status}">${c.status === 'ready' ? 'Ready to post' : 'Needs your review'}</span>
-    <div class="cap">${c.caption}</div>
+    <div class="cap">${esc(c.caption)}</div>
     <div class="btns"><button class="ok">${c.status === 'ready' ? 'Approve & schedule' : 'Approve'}</button><button class="no">Tweak</button></div>
   </div>`).join('')}</div>` });
 
