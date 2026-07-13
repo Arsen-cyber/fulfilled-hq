@@ -66,11 +66,11 @@ V.overview = () => ({ title: 'Overview', sub: D.updated, note: true, init: () =>
   html: `<div class="grid"><div class="col">
     ${heroCard()}
     <section class="kpis six">
-      ${kpi('Active subscribers', fmt(m.activeSubs), m.activeSubs ? 'live' : 'after launch')}
-      ${kpi('Free trials active', fmt(m.trials), m.trials ? 'live' : 'after launch')}
-      ${kpi('Trial → Paid', '—', 'after launch')}
-      ${kpi('Churn (monthly)', '—', 'after launch')}
-      ${kpi('Lifetime value', '—', 'after launch')}
+      ${kpi('Active subscribers', fmt(m.activeSubs), m.activeSubs ? 'live' : 'as data comes in')}
+      ${kpi('Free trials active', fmt(m.trials), m.trials ? 'live' : 'as data comes in')}
+      ${kpi('Trial → Paid', '—', 'as data comes in')}
+      ${kpi('Churn (monthly)', '—', 'as data comes in')}
+      ${kpi('Lifetime value', '—', 'as data comes in')}
       ${kpi('Ad ROAS', '—', 'connect Ads')}
     </section>
     ${funnelCard()} ${adsCard()}
@@ -88,21 +88,21 @@ V.money = () => { const pct = m.goal ? Math.round(m.mrr / m.goal * 100) : 0;
         <div class="goalbar"><div class="gt"><span>to $${fmt(m.goal)}</span><span>${pct}%</span></div><div class="track"><i style="width:${Math.max(0, pct)}%"></i></div></div></div>
       <div class="chartwrap">${m.mrrSeries.length ? '<canvas id="c-mrr2"></canvas>' : empty('Chart builds as MRR grows.')}</div></div></section>
     <section class="card"><h3>Subscribers ${m.live ? LIVE() : ''}</h3><div class="hero" style="grid-template-columns:1fr 1.4fr">
-      <div><div class="big serif" style="font-size:62px">${fmt(m.activeSubs)}</div><div class="delta ${m.activeSubs ? 'u' : ''}" style="${m.activeSubs ? '' : 'color:var(--faint)'}">${m.activeSubs ? 'active now' : 'none yet — launch first'}</div></div>
+      <div><div class="big serif" style="font-size:62px">${fmt(m.activeSubs)}</div><div class="delta ${m.activeSubs ? 'u' : ''}" style="${m.activeSubs ? '' : 'color:var(--faint)'}">${m.activeSubs ? 'active now' : 'none yet'}</div></div>
       <div class="chartwrap">${m.subsSeries.length ? '<canvas id="c-subs"></canvas>' : empty('Chart builds as subscribers grow.')}</div></div></section></div>
     <section class="kpis six" style="margin-bottom:20px">
-      ${kpi('Trial → Paid', '—', 'after launch')}
-      ${kpi('Churn', '—', 'after launch')}
-      ${kpi('Lifetime value', '—', 'after launch')}
-      ${kpi('ARPU', '—', 'after launch')}
-      ${kpi('Active trials', fmt(m.trials), m.trials ? 'live' : 'after launch')}
-      ${kpi('Refund rate', '—', 'after launch')}
+      ${kpi('Trial → Paid', '—', 'as data comes in')}
+      ${kpi('Churn', '—', 'as data comes in')}
+      ${kpi('Lifetime value', '—', 'as data comes in')}
+      ${kpi('ARPU', '—', 'as data comes in')}
+      ${kpi('Active trials', fmt(m.trials), m.trials ? 'live' : 'as data comes in')}
+      ${kpi('Refund rate', '—', 'as data comes in')}
     </section>
     <div class="two">
       <section class="card"><h3>Retention · how long people stay</h3>${m.retention.length ? `<div class="funnel">
         ${['Day 0', 'Day 1', 'Day 3', 'Day 7', 'Day 14', 'Day 30', 'Day 60'].map((d, i) =>
           `<div class="fstage"><div class="fn">${d}</div><div class="fbar" style="width:${m.retention[i]}%">${m.retention[i]}%</div><div class="fv"></div></div>`).join('')}
-      </div>` : empty('Retention shows up once people have used the app over time (post-launch).')}</section>
+      </div>` : empty('Retention shows up once people have used the app over time.')}</section>
       <section class="card"><h3>Recent transactions ${m.transactions.length ? LIVE() : ''}</h3>${m.transactions.length ? `<table class="table"><tbody>
         ${m.transactions.map((t) => `<tr><td><b>${t.who}</b><br><span style="color:var(--muted);font-size:12px">${t.what}</span></td><td class="num" style="color:${t.neg ? 'var(--down)' : 'var(--up)'}">${t.amt}</td><td class="num">${t.t}</td></tr>`).join('')}
       </tbody></table>` : empty('Trials, renewals and refunds will list here as they happen.')}</section>
@@ -110,7 +110,7 @@ V.money = () => { const pct = m.goal ? Math.round(m.mrr / m.goal * 100) : 0;
 
 // Funnel
 function funnelCard() { return `<section class="card"><h3>Funnel · where people drop off</h3>${D.funnel.length ? `<div class="funnel">${D.funnel.map((s) =>
-  `<div class="fstage"><div class="fn">${s.stage}${s.sub ? `<small>${s.sub}</small>` : ''}</div><div class="fbar" style="width:${s.w}%">${fmt(s.n)}</div><div class="fv"><b>${s.note}</b></div></div>`).join('')}</div>` : empty('No funnel yet. This fills in once ads are running and installs → trials → paid start flowing (after launch + Ads connected).')}</section>`; }
+  `<div class="fstage"><div class="fn">${s.stage}${s.sub ? `<small>${s.sub}</small>` : ''}</div><div class="fbar" style="width:${s.w}%">${fmt(s.n)}</div><div class="fv"><b>${s.note}</b></div></div>`).join('')}</div>` : empty('No funnel yet. This fills in once ads are running and installs → trials → paid start flowing (once Ads are connected).')}</section>`; }
 V.funnel = () => ({ title: 'Funnel', sub: 'The journey from ad to paid subscriber',
   html: `<div style="max-width:840px">${funnelCard()}</div>` });
 
@@ -133,7 +133,7 @@ function socialTiles() { const s = D.social;
     + appleTile(s.apple); }
 function appleTile(ap) {
   if (!ap.live) return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store</div><div class="sv" style="font-size:22px;color:var(--faint)">Loading…</div><div class="sd" style="color:var(--faint)">tap “Refresh Apple data”</div><div class="meta">TestFlight testers, builds & rating appear here.</div></div>`;
-  return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store ${LIVE()}</div><div class="sv">${ap.testers ?? 0}</div><div class="sd" style="color:var(--gold)">TestFlight testers</div><div class="meta">${ap.builds ?? 0} builds uploaded<br>${ap.downloads ? `Downloads <b>${fmt(ap.downloads)}</b>` : 'Downloads begin at launch'}</div></div>`;
+  return `<div class="stile"><div class="sh"><span class="si ap"></span>App Store ${LIVE()}</div><div class="sv">${ap.testers ?? 0}</div><div class="sd" style="color:var(--gold)">TestFlight testers</div><div class="meta">${ap.builds ?? 0} builds uploaded<br>${ap.downloads ? `Downloads <b>${fmt(ap.downloads)}</b>` : 'Downloads syncing soon'}</div></div>`;
 }
 const SOCIAL_META = { instagram: ['ig', '◙', 'Instagram'], tiktok: ['tk', '♪', 'TikTok'], facebook: ['fb', 'f', 'Facebook'], apple: ['ap', '', 'App Store'] };
 let socialTab = 'instagram';
@@ -153,8 +153,8 @@ V.social = () => { const key = socialTab, p = D.social[key], [cls, ic, name] = S
     <div class="two">
       <section class="card"><h3><span class="si ${cls}" style="display:inline-flex;vertical-align:middle;margin-right:6px">${ic}</span>${name} ${p.live ? LIVE() : ''}</h3>
         <div class="hero" style="grid-template-columns:1fr 1.5fr"><div><div class="big serif" style="font-size:54px">${metric}</div><div class="delta" style="color:var(--gold)">TestFlight testers</div>
-        <div class="meta" style="margin-top:14px;font-size:13px;color:var(--muted)">${p.builds ?? 0} builds uploaded${p.rating ? ` · Rating ${p.rating}★` : ''}<br>${p.downloads ? `Downloads <b>${fmt(p.downloads)}</b>` : 'Downloads begin at launch'}</div></div>
-        <div class="chartwrap">${p.series.length ? '<canvas id="c-soc"></canvas>' : empty('Growth chart begins at launch.')}</div></div></section>
+        <div class="meta" style="margin-top:14px;font-size:13px;color:var(--muted)">${p.builds ?? 0} builds uploaded${p.rating ? ` · Rating ${p.rating}★` : ''}<br>${p.downloads ? `Downloads <b>${fmt(p.downloads)}</b>` : 'Downloads syncing soon'}</div></div>
+        <div class="chartwrap">${p.series.length ? '<canvas id="c-soc"></canvas>' : empty('Growth chart builds as you grow.')}</div></div></section>
       <section class="card"><h3>App Store</h3>${p.posts.length ? `<div class="postgrid">${p.posts.map((x) =>
         `<div class="post"><div class="pt">${x.t}</div><div class="pv">${x.v}<small>${x.s}</small></div></div>`).join('')}</div>` : empty('Search-term rankings appear once the app is live in the store.')}</section>
     </div>` }); };
@@ -296,7 +296,7 @@ function render() {
   $('#nav').innerHTML = renderNav(view);
   $('#main').innerHTML = `<div class="top"><div><h1>${r.title}</h1><div class="sub">${r.sub}</div></div>
     ${rangeTabs()}</div>
-    ${r.note ? `<div class="note">✅ <b>Live data only.</b> RevenueCat, App Store & the agents are connected. Empty sections fill in as you launch, grow, and connect Instagram/TikTok/Ads (Settings → Connect).</div>` : ''}
+    ${r.note ? `<div class="note">✅ <b>Live data only.</b> RevenueCat, App Store & the agents are connected. Empty sections fill in as you grow and connect Instagram/TikTok/Ads (Settings → Connect).</div>` : ''}
     ${r.html}`;
   if (r.init) setTimeout(r.init, 30);
   $('#main').scrollTop = 0; window.scrollTo(0, 0);
