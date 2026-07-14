@@ -310,7 +310,16 @@ let PASS = '';
 async function loadLive() {
   const c = window.HQ_CONFIG; if (!c) return true;
   try {
-    const res = await fetch(c.url + '/hq-data', { method: 'POST', headers: { Authorization: 'Bearer ' + c.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: PASS }) });
+    // Time the request out so a blocked/slow network (e.g. locked-down WiFi)
+    // can never hang boot() on a blank screen — we fall through to render().
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    let res;
+    try {
+      res = await fetch(c.url + '/hq-data', { method: 'POST', headers: { Authorization: 'Bearer ' + c.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: PASS }), signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (res.status === 401) return false;        // wrong password
     if (!res.ok) return true;                     // other error: keep samples
     const d = await res.json(); if (d.error) return true;
