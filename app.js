@@ -216,7 +216,7 @@ window.setCreatorTier = (t) => { CREATOR_TIER = t; render(); };
 window.runAgents = async (btn) => {
   if (btn) { btn.textContent = '🔄 Working…'; btn.disabled = true; }
   try {
-    await fetch(window.HQ_CONFIG.url + '/hq-agents', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: '{}' });
+    await fetch(window.HQ_CONFIG.url + '/hq-agents', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: PASS }) });
     alert('🔄 Generating fresh content… new drafts land in a few seconds — refresh to see them.');
   } catch (e) { alert('Could not run the agents — try again.'); }
   if (btn) { btn.textContent = '🔄 Generate content now'; btn.disabled = false; }
@@ -232,7 +232,7 @@ window.refreshApple = async (btn) => {
 window.findCreators = async (btn) => {
   if (btn) { btn.textContent = '🔎 Scouting…'; btn.disabled = true; }
   try {
-    await fetch(window.HQ_CONFIG.url + '/hq-creator-scout', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: '{}' });
+    await fetch(window.HQ_CONFIG.url + '/hq-creator-scout', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ pass: PASS }) });
     alert('🔎 Scouting for creators…\n\nNew ones appear here in about a minute — refresh the page to see them.');
   } catch (e) { alert('Could not start the scout — try again.'); }
   if (btn) { btn.textContent = '🔎 Find creators now'; btn.disabled = false; }
@@ -245,7 +245,7 @@ window.copyDM = (i) => {
 };
 window.openIG = (h) => window.open('https://instagram.com/' + String(h).replace('@', ''), '_blank');
 window.creatorStatus = async (handle, status) => {
-  try { await fetch(window.HQ_CONFIG.url + '/hq-creator-scout', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'status', handle, status }) }); } catch (e) { /* best-effort */ }
+  try { await fetch(window.HQ_CONFIG.url + '/hq-creator-scout', { method: 'POST', headers: { Authorization: 'Bearer ' + window.HQ_CONFIG.anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'status', handle, status, pass: PASS }) }); } catch (e) { /* best-effort */ }
   D.creators = (D.creators || []).filter((x) => x.handle !== handle);
   render();
 };
